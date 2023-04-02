@@ -1,128 +1,179 @@
-// Constants
+const canvas = document.getElementById('canvas');
+const context = canvas.getContext('2d');
+
+const PLATFORM_COUNT = 10;
 const PLATFORM_WIDTH = 80;
 const PLATFORM_HEIGHT = 20;
+const PLATFORM_PADDING = 10;
+const PLATFORM_SPEED = 1;
 const PLATFORM_GAP = 100;
-const PLATFORM_SPEED = 2;
-const MAX_PLATFORMS = 10;
-const GRAVITY = 0.1;
-const JUMP_SPEED = 4;
+const JUMP_VELOCITY = 20;
+const GRAVITY = 1;
 
-// Variables
-let canvas = document.getElementById('canvas');
-let ctx = canvas.getContext('2d');
-let platforms = [];
-let player = null;
-let score = 0;
-
-// Platform class
-class Platform {
-	constructor(x, y) {
-		this.x = x;
-		this.y = y;
-	}
-	
-	draw() {
-		ctx.fillStyle = '#000';
-		ctx.fillRect(this.x, this.y, PLATFORM_WIDTH, PLATFORM_HEIGHT);
-	}
-	
-	move() {
-		this.y += PLATFORM_SPEED;
-	}
-}
-
-// Player class
 class Player {
-	constructor(x, y) {
-		this.x = x;
-		this.y = y;
-		this.velocityY = 0;
-		this.onPlatform = false;
-	}
-	
-	draw() {
-		ctx.fillStyle = '#F00';
-		ctx.fillRect(this.x, this.y, 20, 20);
-	}
-	
-	move() {
-		if (this.onPlatform) {
-			this.velocityY = -JUMP_SPEED;
-			this.onPlatform = false;
-		}
-		this.y += this.velocityY;
-		this.velocityY += GRAVITY;
-	}
-	
-	checkCollision() {
-		for (let i = 0; i < platforms.length; i++) {
-			if (this.x + 20 >= platforms[i].x && this.x <= platforms[i].x + PLATFORM_WIDTH &&
-				this.y + 20 >= platforms[i].y && this.y + 20 <= platforms[i].y + PLATFORM_HEIGHT &&
-				this.velocityY > 0) {
-				this.velocityY = -JUMP_SPEED;
-				this.onPlatform = true;
-				score++;
-				break;
-			}
-		}
-	}
+    constructor(x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.dx = 0;
+        this.dy = 0;
+    }
+
+    jump() {
+        this.dy = -JUMP_VELOCITY;
+    }
+
+    moveLeft() {
+        this.dx = -PLATFORM_SPEED;
+    }
+
+    moveRight() {
+        this.dx = PLATFORM_SPEED;
+    }
+
+    stopMoving() {
+        this.dx = 0;
+    }
+
+    update() {
+        this.x += this.dx;
+        this.y += this.dy;
+        this.dy += GRAVITY;
+    }
+
+    draw() {
+        context.fillStyle = '#f00';
+        context.beginPath();
+        context.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        context.fill();
+    }
 }
 
-// Create initial platforms
-for (let i = 0; i < MAX_PLATFORMS; i++) {
-	let x = Math.random() * (canvas.width - PLATFORM_WIDTH);
-	let y = canvas.height - (i + 1) * PLATFORM_GAP;
-	platforms.push(new Platform(x, y));
+class Platform {
+    constructor(x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    update() {
+        this.x += PLATFORM_SPEED;
+    }
+
+    draw() {
+        context.fillStyle = '#0f0';
+        context.fillRect(this.x, this.y, this.width, this.height);
+    }
 }
 
-// Create the player
-player = new Player(canvas.width / 2 - 10, canvas.height - PLATFORM_GAP);
+let player = new Player(canvas.width / 2 - 25, canvas.height - 75, 50, 50);
+let platforms = [];
 
-// Game loop
-function gameLoop() {
-	// Clear the canvas
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	
-	// Move and draw the platforms
-	for (let i = 0; i < platforms.length; i++) {
-		platforms[i].move();
-		platforms[i].draw();
-		
-		// Remove platforms that have gone off the screen
-		if (platforms[i].y > canvas.height) {
-			platforms.splice(i, 1);
-			score++;
-			i--;
-		}
-	}
-	
-	// Add new platforms at the top
-	if (platforms.length < MAX_PLATFORMS && platforms[0].y < canvas.height - PLATFORM_GAP) {
+function init() {
+    for (let i = 0; i < PLATFORM_COUNT; i++) {
         let x = Math.random() * (canvas.width - PLATFORM_WIDTH);
-		let y = -PLATFORM_GAP;
-		platforms.push(new Platform(x, y));
-	}
-	
-	// Move and draw the player
-	player.move();
-	player.checkCollision();
-	player.draw();
-	
-	// Draw the score
-	ctx.font = 'bold 24px Arial';
-	ctx.fillStyle = '#000';
-	ctx.fillText('Score: ' + score, 10, 30);
-	
-	// Game over if player falls off the bottom
-	if (player.y > canvas.height) {
-		alert('Game over! Your score was ' + score);
-		location.reload();
-	}
-	
-	// Request next animation frame
-	window.requestAnimationFrame(gameLoop);
+        let y = (canvas.height - PLATFORM_GAP) - i * (PLATFORM_HEIGHT + PLATFORM_PADDING);
+        let platform = new Platform(x, y, PLATFORM_WIDTH, PLATFORM_HEIGHT);
+        platforms.push(platform);
+    }
 }
 
-// Start the game loop
-window.requestAnimationFrame(gameLoop);
+function update() {
+    player.update();
+
+    if (player.y < canvas.height / 2) {
+        for (let i = 0; i < platforms.length; i++) {
+            let platform = platforms[i];
+            platform.y += player.dy;
+
+            if (platform.y > canvas.height) {
+                let x = Math.random() * (canvas.width - PLATFORM_WIDTH);
+                let y = platform.y - PLATFORM_HEIGHT - PLATFORM_PADDING;
+                platform.x = x;
+                platform.y = y;
+            }
+        }
+    }
+
+    if (player.y > canvas.height) {
+        console.log('Game Over!');
+        player = new Player(canvas.width / 2 - 25, canvas.height - 75, 50, 50);
+        platforms = [];
+       
+        init();
+    }
+
+    for (let i = 0; i < platforms.length; i++) {
+        let platform = platforms[i];
+
+        if (player.y < canvas.height / 2) {
+            platform.y -= player.dy;
+            if (platform.y < 0) {
+                platforms.splice(i, 1);
+                i--;
+                let x = Math.random() * (canvas.width - PLATFORM_WIDTH);
+                let y = platform.y + canvas.height + PLATFORM_GAP;
+                let newPlatform = new Platform(x, y, PLATFORM_WIDTH, PLATFORM_HEIGHT);
+                platforms.push(newPlatform);
+            }
+        }
+
+        if (platform.x < -PLATFORM_WIDTH) {
+            platform.x = canvas.width;
+        }
+    }
+
+    if (player.y > canvas.height) {
+        console.log('Game Over!');
+        player = new Player(canvas.width / 2 - 25, canvas.height - 75, 50, 50);
+        platforms = [];
+        init();
+    }
+
+    if (player.x < 0) {
+        player.x = canvas.width - player.width;
+    }
+
+    if (player.x > canvas.width - player.width) {
+        player.x = 0;
+    }
+}
+
+function draw() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    player.draw();
+
+    for (let i = 0; i < platforms.length; i++) {
+        let platform = platforms[i];
+        platform.draw();
+    }
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'ArrowLeft') {
+        player.moveLeft();
+    } else if (event.key === 'ArrowRight') {
+        player.moveRight();
+    } else if (event.key === 'ArrowUp') {
+        player.jump();
+    }
+});
+
+document.addEventListener('keyup', function(event) {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        player.stopMoving();
+    }
+});
+
+init();
+loop();
+
 
